@@ -15,7 +15,7 @@ plugins {
     id 'com.modrinth.minotaur' version '2.+' apply false
     id 'org.jetbrains.changelog' version '2.2.1'
 }
-
+apply plugin: 'com.matthewprenger.cursegradle'
 apply from: 'gradle/scripts/helpers.gradle'
 
 // Early Assertions
@@ -107,6 +107,7 @@ repositories {
         name 'CleanroomMC Maven'
         url 'https://maven.cleanroommc.com'
     }
+    maven { url 'https://www.cursemaven.com' }
 }
 
 dependencies {
@@ -144,6 +145,8 @@ dependencies {
         testImplementation 'org.junit.jupiter:junit-jupiter:5.7.1'
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     }
+    implementation("curse.maven:pixelmon-389487:4348446")
+    implementation("curse.maven:jei-238222:5846804")
 }
 
 apply from: 'gradle/scripts/dependencies.gradle'
