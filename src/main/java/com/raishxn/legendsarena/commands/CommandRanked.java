@@ -2,7 +2,8 @@ package com.raishxn.legendsarena.commands;
 
 import com.raishxn.legendsarena.capabilities.PlayerDataManager;
 import com.raishxn.legendsarena.data.IPlayerData;
-import com.raishxn.legendsarena.ranked.RankedManager; // Importação adicionada
+import com.raishxn.legendsarena.ranked.Rank;
+import com.raishxn.legendsarena.ranked.RankedManager;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
@@ -24,12 +25,12 @@ public class CommandRanked extends CommandBase {
     @Nonnull
     @Override
     public String getUsage(@Nonnull ICommandSender sender) {
-        return "/ranked <join|leave|status>";
+        return "/ranked <join|leave|status|debug>";
     }
 
     @Override
     public int getRequiredPermissionLevel() {
-        return 0; // Qualquer jogador pode usar
+        return 0;
     }
 
     @Override
@@ -50,22 +51,38 @@ public class CommandRanked extends CommandBase {
 
         switch (subCommand) {
             case "join":
-                // Lógica agora chama o RankedManager
                 RankedManager.getInstance().addPlayerToQueue(player);
                 break;
             case "leave":
-                // Lógica agora chama o RankedManager
                 RankedManager.getInstance().removePlayerFromQueue(player);
                 break;
             case "status":
                 IPlayerData data = player.getCapability(PlayerDataManager.PLAYER_DATA_CAPABILITY, null);
                 if (data != null) {
+                    Rank playerRank = Rank.getRankFromElo(data.getElo());
+
                     player.sendMessage(new TextComponentString(TextFormatting.AQUA + "--- Status Ranqueado ---"));
-                    player.sendMessage(new TextComponentString("ELO: " + data.getElo()));
-                    player.sendMessage(new TextComponentString("Vitórias: " + data.getWins()));
-                    player.sendMessage(new TextComponentString("Derrotas: " + data.getLosses()));
+                    player.sendMessage(new TextComponentString("Rank: " + TextFormatting.GOLD + playerRank.getDisplayName()));
+                    player.sendMessage(new TextComponentString(TextFormatting.WHITE + "ELO: " + data.getElo()));
+                    player.sendMessage(new TextComponentString(TextFormatting.GREEN + "Vitórias: " + data.getWins()));
+                    player.sendMessage(new TextComponentString(TextFormatting.RED + "Derrotas: " + data.getLosses()));
+                    player.sendMessage(new TextComponentString(TextFormatting.AQUA + "------------------------"));
+
                 } else {
-                    player.sendMessage(new TextComponentString(TextFormatting.RED + "Não foi possível carregar seus dados."));
+                    player.sendMessage(new TextComponentString(TextFormatting.RED + "ERRO: Não foi possível carregar seus dados."));
+                }
+                break;
+            case "debug":
+                IPlayerData debugData = player.getCapability(PlayerDataManager.PLAYER_DATA_CAPABILITY, null);
+                if (debugData != null) {
+                    player.sendMessage(new TextComponentString(TextFormatting.YELLOW + "=== DEBUG INFO ==="));
+                    player.sendMessage(new TextComponentString("Capability: " + (debugData != null ? "PRESENT" : "NULL")));
+                    player.sendMessage(new TextComponentString("ELO: " + debugData.getElo()));
+                    player.sendMessage(new TextComponentString("Wins: " + debugData.getWins()));
+                    player.sendMessage(new TextComponentString("Losses: " + debugData.getLosses()));
+                    player.sendMessage(new TextComponentString(TextFormatting.YELLOW + "=================="));
+                } else {
+                    player.sendMessage(new TextComponentString(TextFormatting.RED + "DEBUG: Capability é NULL"));
                 }
                 break;
             default:

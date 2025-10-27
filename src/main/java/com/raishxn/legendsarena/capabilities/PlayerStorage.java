@@ -1,7 +1,7 @@
 package com.raishxn.legendsarena.capabilities;
 
 import com.raishxn.legendsarena.data.IPlayerData;
-import net.minecraft.nbt.NBTBase; // Importação alterada
+import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.EnumFacing;
 import net.minecraftforge.common.capabilities.Capability;
@@ -20,14 +20,21 @@ public class PlayerStorage implements Capability.IStorage<IPlayerData> {
     }
 
     @Override
-    // A mudança principal está aqui: trocamos NBTTagCompound por NBTBase
     public void readNBT(Capability<IPlayerData> capability, IPlayerData instance, EnumFacing side, NBTBase nbt) {
-        // Agora nós verificamos se o NBT recebido é do tipo que esperamos e o convertemos
+        // A correção está aqui.
         if (nbt instanceof NBTTagCompound) {
             NBTTagCompound compound = (NBTTagCompound) nbt;
-            instance.setElo(compound.getInteger("elo"));
-            instance.setWins(compound.getInteger("wins"));
-            instance.setLosses(compound.getInteger("losses"));
+
+            // Apenas tentamos ler um valor SE ele existir no arquivo salvo.
+            if (compound.hasKey("elo")) {
+                instance.setElo(compound.getInteger("elo"));
+            }
+            if (compound.hasKey("wins")) {
+                instance.setWins(compound.getInteger("wins"));
+            }
+            if (compound.hasKey("losses")) {
+                instance.setLosses(compound.getInteger("losses"));
+            }
         }
     }
 }
