@@ -15,6 +15,9 @@ import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
 import net.minecraftforge.fml.common.event.FMLServerStoppingEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import com.raishxn.legendsarena.commands.CommandRanked;
+import com.raishxn.legendsarena.commands.CommandRankedAdmin; // Importar o novo comando
+import net.minecraftforge.fml.common.event.FMLServerStartingEvent;
 
 @Mod(modid = Tags.MOD_ID, name = Tags.MOD_NAME, version = Tags.VERSION, acceptableRemoteVersions = "*")
 public class LegendsArena {
@@ -48,6 +51,8 @@ public class LegendsArena {
     @Mod.EventHandler
     public void onServerStart(FMLServerStartingEvent event) {
         event.registerServerCommand(new CommandRanked());
+        event.registerServerCommand(new CommandRanked());
+        event.registerServerCommand(new CommandRankedAdmin());
     }
 
     @Mod.EventHandler

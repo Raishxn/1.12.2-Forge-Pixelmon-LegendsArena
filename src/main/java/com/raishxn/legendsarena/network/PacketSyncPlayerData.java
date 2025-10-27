@@ -2,79 +2,96 @@ package com.raishxn.legendsarena.network;
 
 import com.raishxn.legendsarena.capabilities.PlayerDataManager;
 import com.raishxn.legendsarena.data.IPlayerData;
+import com.raishxn.legendsarena.data.IPlayerData.PlayerTierStats;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraftforge.fml.common.FMLCommonHandler;
+import net.minecraftforge.fml.common.network.ByteBufUtils;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class PacketSyncPlayerData implements IMessage {
 
-    private int elo;
-    private int wins;
-    private int losses;
+    // Em vez de campos individuais, agora temos um mapa.
+    private Map<String, PlayerTierStats> tierStats;
 
-    // Construtor vazio obrigatório para o Forge
+    // Construtor vazio obrigatório
     public PacketSyncPlayerData() {}
 
-    // Construtor para facilitar a criação do pacote com os dados
+    // Construtor que pega todos os dados do jogador
     public PacketSyncPlayerData(IPlayerData data) {
-        this.elo = data.getElo();
-        this.wins = data.getWins();
-        this.losses = data.getLosses();
-    }
-
-    @Override
-    public void fromBytes(ByteBuf buf) {
-        this.elo = buf.readInt();
-        this.wins = buf.readInt();
-        this.losses = buf.readInt();
+        this.tierStats = data.getAllTierStats();
     }
 
     @Override
     public void toBytes(ByteBuf buf) {
-        buf.writeInt(this.elo);
-        buf.writeInt(this.wins);
-        buf.writeInt(this.losses); // <--- estava faltando
+        // Para enviar um mapa pela rede, a maneira mais fácil e robusta é convertê-lo para NBT.
+        NBTTagCompound mainCompound = new NBTTagCompound();
+        NBTTagCompound tiersCompound = new NBTTagCompound();
+
+        for (Map.Entry<String, PlayerTierStats> entry : this.tierStats.entrySet()) {
+            NBTTagCompound statsCompound = new NBTTagCompound();
+            statsCompound.setInteger("elo", entry.getValue().getElo());
+            statsCompound.setInteger("wins", entry.getValue().getWins());
+            statsCompound.setInteger("losses", entry.getValue().getLosses());
+            tiersCompound.setTag(entry.getKey(), statsCompound);
+        }
+        mainCompound.setTag("rankedTiers", tiersCompound);
+
+        // A classe ByteBufUtils do Forge facilita a escrita de NBTs para a rede.
+        ByteBufUtils.writeTag(buf, mainCompound);
     }
 
-    // A classe Handler agora é segura para o servidor
+    @Override
+    public void fromBytes(ByteBuf buf) {
+        // Lemos o NBT da rede.
+        NBTTagCompound mainCompound = ByteBufUtils.readTag(buf);
+        this.tierStats = new HashMap<>();
+
+        if (mainCompound != null && mainCompound.hasKey("rankedTiers")) {
+            NBTTagCompound tiersCompound = mainCompound.getCompoundTag("rankedTiers");
+            for (String tierName : tiersCompound.getKeySet()) {
+                NBTTagCompound statsCompound = tiersCompound.getCompoundTag(tierName);
+                int elo = statsCompound.getInteger("elo");
+                int wins = statsCompound.getInteger("wins");
+                int losses = statsCompound.getInteger("losses");
+                this.tierStats.put(tierName, new PlayerTierStats(elo, wins, losses));
+            }
+        }
+    }
+
+    // A classe Handler lida com o que acontece quando o pacote chega ao destino.
     public static class Handler implements IMessageHandler<PacketSyncPlayerData, IMessage> {
         @Override
         public IMessage onMessage(PacketSyncPlayerData message, MessageContext ctx) {
-            // Este código é executado na thread de rede.
-            // Agendamos uma tarefa para ser executada na thread principal do jogo para evitar problemas de concorrência.
+            // Garante que o código é executado na thread principal do Minecraft para evitar problemas.
             FMLCommonHandler.instance().getWorldThread(ctx.netHandler).addScheduledTask(() -> handle(message, ctx));
             return null;
         }
 
-        // Este método auxiliar é chamado na thread principal.
         private void handle(PacketSyncPlayerData message, MessageContext ctx) {
-            // Verificamos explicitamente se estamos no cliente antes de chamar o código de cliente.
+            // O código de cliente só pode ser executado no cliente.
             if (ctx.side == Side.CLIENT) {
                 handleClientSide(message);
             }
         }
 
-        /**
-         * Este método contém TODO o código que só pode ser executado no cliente.
-         * A anotação @SideOnly(Side.CLIENT) faz com que o Forge remova completamente este método
-         * da versão do mod que corre no servidor, evitando assim o crash.
-         */
         @SideOnly(Side.CLIENT)
         private void handleClientSide(PacketSyncPlayerData message) {
+            // Quando o cliente recebe o pacote, atualizamos os seus dados.
             EntityPlayer player = Minecraft.getMinecraft().player;
             if (player != null) {
                 IPlayerData data = player.getCapability(PlayerDataManager.PLAYER_DATA_CAPABILITY, null);
                 if (data != null) {
-                    // Atualiza os dados do lado do cliente com os valores recebidos do servidor
-                    data.setElo(message.elo);
-                    data.setWins(message.wins);
-                    data.setLosses(message.losses);
+                    data.setAllTierStats(message.tierStats);
                 }
             }
         }

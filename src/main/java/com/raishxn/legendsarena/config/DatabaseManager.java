@@ -65,15 +65,28 @@ public class DatabaseManager {
 
     private void createTables() throws SQLException {
         try (Statement statement = this.connection.createStatement()) {
-            String createPlayerTableSQL = "CREATE TABLE IF NOT EXISTS player_data (" +
-                    "uuid VARCHAR(36) PRIMARY KEY NOT NULL," +
-                    "player_name VARCHAR(16) NOT NULL," +
+            // Comando SQL para a tabela de estatísticas (sem alterações)
+            String createStatsTableSQL = "CREATE TABLE IF NOT EXISTS ranked_stats (" +
+                    "uuid VARCHAR(36) NOT NULL," +
+                    "tier VARCHAR(32) NOT NULL," +
                     "elo INT DEFAULT 1000," +
                     "wins INT DEFAULT 0," +
-                    "losses INT DEFAULT 0" +
+                    "losses INT DEFAULT 0," +
+                    "PRIMARY KEY (uuid, tier)" +
                     ");";
-            statement.execute(createPlayerTableSQL);
-            LegendsArena.LOGGER.info("Tabela 'player_data' verificada/criada com sucesso.");
+            statement.execute(createStatsTableSQL);
+            LegendsArena.LOGGER.info("Tabela 'ranked_stats' verificada/criada com sucesso.");
+
+            // --- NOVO COMANDO SQL PARA A TABELA DE PUNIÇÕES ---
+            String createPunishmentsTableSQL = "CREATE TABLE IF NOT EXISTS ranked_punishments (" +
+                    "punishment_id INTEGER PRIMARY KEY AUTOINCREMENT," + // Um ID único para cada punição
+                    "player_uuid VARCHAR(36) NOT NULL," + // UUID do jogador punido
+                    "tier_banned VARCHAR(32) NOT NULL," + // O tier do ban ('all' para todos)
+                    "reason TEXT," + // O motivo do banimento
+                    "expires_at BIGINT" + // A data de expiração em milissegundos (nulo para permanente)
+                    ");";
+            statement.execute(createPunishmentsTableSQL);
+            LegendsArena.LOGGER.info("Tabela 'ranked_punishments' verificada/criada com sucesso.");
         }
     }
 

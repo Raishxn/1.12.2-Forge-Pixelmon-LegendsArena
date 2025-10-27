@@ -1,38 +1,36 @@
 package com.raishxn.legendsarena.data;
 
-// Esta é a implementação real dos nossos dados.
+import com.raishxn.legendsarena.LegendsArena;
+import com.raishxn.legendsarena.config.tier.TierConfig;
+
+import java.util.HashMap;
+import java.util.Map;
+
 public class PlayerData implements IPlayerData {
-    private int elo = 1000; // ELO inicial padrão
-    private int wins = 0;
-    private int losses = 0;
+
+    private Map<String, PlayerTierStats> tierStats = new HashMap<>();
 
     @Override
-    public int getElo() {
-        return this.elo;
+    public PlayerTierStats getStatsForTier(String tier) {
+        // --- LÓGICA ATUALIZADA ---
+        // Se o jogador ainda não tem estatísticas para este tier,
+        // vamos criá-las usando o ELO inicial da configuração.
+        return tierStats.computeIfAbsent(tier.toLowerCase(), tierName -> {
+            TierConfig config = LegendsArena.getConfigManager().getTierConfig(tierName);
+            // Se a configuração existir, usa o ELO inicial dela. Senão, usa 1000 como fallback.
+            int startingElo = (config != null) ? config.getStartingElo() : 1000;
+            return new PlayerTierStats(startingElo, 0, 0);
+        });
     }
 
     @Override
-    public void setElo(int elo) {
-        this.elo = elo;
+    public Map<String, PlayerTierStats> getAllTierStats() {
+        return this.tierStats;
     }
 
     @Override
-    public int getWins() {
-        return this.wins;
-    }
-
-    @Override
-    public void setWins(int wins) {
-        this.wins = wins;
-    }
-
-    @Override
-    public int getLosses() {
-        return this.losses;
-    }
-
-    @Override
-    public void setLosses(int losses) {
-        this.losses = losses;
+    public void setAllTierStats(Map<String, PlayerTierStats> stats) {
+        this.tierStats.clear();
+        this.tierStats.putAll(stats);
     }
 }
