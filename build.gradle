@@ -111,6 +111,9 @@ repositories {
 }
 
 dependencies {
+    implementation group: 'org.xerial', name: 'sqlite-jdbc', version: '3.36.0.3'
+    implementation group: 'mysql', name: 'mysql-connector-java', version: '8.0.28'
+    implementation group: 'org.yaml', name: 'snakeyaml', version: '1.29'
     if (propertyBool('use_modern_java_syntax')) {
         annotationProcessor 'com.github.bsideup.jabel:jabel-javac-plugin:1.0.0'
         // Workaround for https://github.com/bsideup/jabel/issues/174
@@ -147,6 +150,7 @@ dependencies {
     }
     implementation("curse.maven:pixelmon-389487:4348446")
     implementation("curse.maven:jei-238222:5846804")
+
 }
 
 apply from: 'gradle/scripts/dependencies.gradle'
