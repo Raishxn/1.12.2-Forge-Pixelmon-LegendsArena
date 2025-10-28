@@ -12,8 +12,9 @@ public class TierConfig {
     private final List<String> bannedAbilities;
     private final List<String> bannedHeldItems;
     private final int startingElo;
-    // --- NOVO CAMPO ---
     private final List<String> bannedMoves;
+    // --- NOVO CAMPO ---
+    private final List<String> bannedForms;
 
     public TierConfig(Map<String, Object> data) {
         this.levelCap = (int) data.getOrDefault("level-cap", 100);
@@ -22,8 +23,9 @@ public class TierConfig {
         this.bannedPokemon = loadStringList(data, "banned-pokemon");
         this.bannedAbilities = loadStringList(data, "banned-abilities");
         this.bannedHeldItems = loadStringList(data, "banned-held-items");
-        // --- CARREGAR NOVO CAMPO ---
         this.bannedMoves = loadStringList(data, "banned-moves");
+        // --- CARREGAR NOVO CAMPO ---
+        this.bannedForms = loadStringList(data, "banned-forms");
     }
 
     private List<String> loadStringList(Map<String, Object> data, String key) {
@@ -40,6 +42,7 @@ public class TierConfig {
     public List<String> getBannedPokemon() { return new ArrayList<>(bannedPokemon); }
     public List<String> getBannedAbilities() { return new ArrayList<>(bannedAbilities); }
     public List<String> getBannedHeldItems() { return new ArrayList<>(bannedHeldItems); }
-    // --- NOVO GETTER ---
     public List<String> getBannedMoves() { return new ArrayList<>(bannedMoves); }
+    // --- NOVO GETTER ---
+    public List<String> getBannedForms() { return new ArrayList<>(bannedForms); }
 }

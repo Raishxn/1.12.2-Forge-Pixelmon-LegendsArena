@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class RankedManager {
     private static final RankedManager INSTANCE = new RankedManager();
@@ -142,6 +144,27 @@ public class RankedManager {
                     }
                 }
             }
+
+            // 6. FORMA BANIDA
+            if (pokemon.getForm() > 0 && pokemon.getFormEnum() != null) {
+                String formIdentifier = pokemon.getFormEnum().toString();
+                String normalizedFormIdentifier = normalizeName(formIdentifier);
+
+                for (String bannedFormName : tierConfig.getBannedForms()) {
+                    String normalizedBannedName = normalizeName(bannedFormName);
+
+                    if (normalizedFormIdentifier.equals(normalizedBannedName)) {
+                        player.sendMessage(new TextComponentString(TextFormatting.RED + "Equipa invalida! O Pokemon " + pkmnDisplayName + " está usando a forma banida: " + formIdentifier + "."));
+                        return;
+                    }
+
+                    String fullPokemonFormName = pokemon.getSpecies().name + "-" + formIdentifier;
+                    if (normalizeName(fullPokemonFormName).equals(normalizedBannedName)) {
+                        player.sendMessage(new TextComponentString(TextFormatting.RED + "Equipa invalida! O Pokemon " + pkmnDisplayName + " está usando a forma banida: " + fullPokemonFormName + "."));
+                        return;
+                    }
+                }
+            }
         }
         // --- FIM DA VALIDAÇÃO ---
 
@@ -177,46 +200,71 @@ public class RankedManager {
             return;
         }
 
-        try {
-            player1.sendMessage(new TextComponentString(TextFormatting.GOLD + "Partida ("+tierUpper(tier)+") encontrada contra " + player2.getName() + "!"));
-            player2.sendMessage(new TextComponentString(TextFormatting.GOLD + "Partida ("+tierUpper(tier)+") encontrada contra " + player1.getName() + "!"));
+        // --- INÍCIO DA LÓGICA DE CONTADOR ---
+        player1.sendMessage(new TextComponentString(TextFormatting.GOLD + "Partida ("+tierUpper(tier)+") encontrada contra " + player2.getName() + "! Preparando a batalha..."));
+        player2.sendMessage(new TextComponentString(TextFormatting.GOLD + "Partida ("+tierUpper(tier)+") encontrada contra " + player1.getName() + "! Preparando a batalha..."));
 
-            PlayerPartyStorage storage1 = Pixelmon.storageManager.getParty(player1);
-            PlayerPartyStorage storage2 = Pixelmon.storageManager.getParty(player2);
+        Timer timer = new Timer();
+        final int[] countdown = {5};
 
-            List<Pokemon> team1 = storage1.getTeam();
-            List<Pokemon> team2 = storage2.getTeam();
+        timer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                if (countdown[0] > 0) {
+                    TextComponentString msg = new TextComponentString(TextFormatting.YELLOW + "A batalha comeca em: " + TextFormatting.AQUA + countdown[0] + TextFormatting.YELLOW + " segundos!");
+                    player1.sendMessage(msg);
+                    player2.sendMessage(msg);
+                    countdown[0]--;
+                } else {
+                    timer.cancel();
 
-            PlayerParticipant participant1 = new PlayerParticipant(player1, team1, 1);
-            PlayerParticipant participant2 = new PlayerParticipant(player2, team2, 1);
+                    // --- INÍCIO DA BATALHA REAL (Executado no final do timer) ---
+                    try {
+                        PlayerPartyStorage storage1 = Pixelmon.storageManager.getParty(player1);
+                        PlayerPartyStorage storage2 = Pixelmon.storageManager.getParty(player2);
 
-            BattleParticipant[] teamParticipants1 = {participant1};
-            BattleParticipant[] teamParticipants2 = {participant2};
+                        List<Pokemon> team1 = storage1.getTeam();
+                        List<Pokemon> team2 = storage2.getTeam();
 
-            BattleRules rules = new BattleRules();
-            rules.battleType = EnumBattleType.Single;
-            rules.numPokemon = 1;
+                        // REVERSÃO PARA O BACKUP (COM numControlledPokemon = 1)
+                        // Confiamos que esta configuração funciona para seleção inicial em seu ambiente.
+                        PlayerParticipant participant1 = new PlayerParticipant(player1, team1, 1);
+                        PlayerParticipant participant2 = new PlayerParticipant(player2, team2, 1);
 
-            if (LegendsArena.getEventHandler() != null) {
-                LegendsArena.getEventHandler().markPlayerInRankedBattle(player1, tier);
-                LegendsArena.getEventHandler().markPlayerInRankedBattle(player2, tier);
+                        BattleParticipant[] teamParticipants1 = {participant1};
+                        BattleParticipant[] teamParticipants2 = {participant2};
+
+                        BattleRules rules = new BattleRules();
+                        rules.battleType = EnumBattleType.Single;
+                        rules.numPokemon = 1; // Batalha 1v1
+
+                        if (LegendsArena.getEventHandler() != null) {
+                            LegendsArena.getEventHandler().markPlayerInRankedBattle(player1, tier);
+                            LegendsArena.getEventHandler().markPlayerInRankedBattle(player2, tier);
+                        }
+
+                        // Dispara o início da batalha
+                        BattleRegistry.startBattle(teamParticipants1, teamParticipants2, rules);
+
+                        // NOTA: Seleção forçada (getNextPokemon) removida para seguir a sua lógica.
+
+                        LegendsArena.LOGGER.info("[RANKED] Batalha ranqueada ({}) iniciada entre {} e {}", tier, player1.getName(), player2.getName());
+
+                    } catch (Exception e) {
+                        LegendsArena.LOGGER.error("Erro ao iniciar batalha ranqueada no tier " + tier, e);
+                        TextComponentString errorMessage = new TextComponentString(TextFormatting.RED + "Ocorreu um erro ao iniciar a batalha.");
+                        if (player1 != null) {
+                            player1.sendMessage(errorMessage);
+                            queue.add(player1);
+                        }
+                        if (player2 != null) {
+                            player2.sendMessage(errorMessage);
+                            queue.add(player2);
+                        }
+                    }
+                }
             }
-
-            BattleRegistry.startBattle(teamParticipants1, teamParticipants2, rules);
-            LegendsArena.LOGGER.info("[RANKED] Batalha ranqueada ({}) iniciada entre {} e {}", tier, player1.getName(), player2.getName());
-
-        } catch (Exception e) {
-            LegendsArena.LOGGER.error("Erro ao iniciar batalha ranqueada no tier " + tier, e);
-            TextComponentString errorMessage = new TextComponentString(TextFormatting.RED + "Ocorreu um erro ao iniciar a batalha.");
-            if (player1 != null) {
-                player1.sendMessage(errorMessage);
-                queue.add(player1);
-            }
-            if (player2 != null) {
-                player2.sendMessage(errorMessage);
-                queue.add(player2);
-            }
-        }
+        }, 0, 1000);
     }
 
     private String tierUpper(String tier) {

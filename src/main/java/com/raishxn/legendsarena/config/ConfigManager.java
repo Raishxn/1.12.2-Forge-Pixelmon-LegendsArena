@@ -70,10 +70,14 @@ public class ConfigManager {
         List<String> ouBannedItems = new ArrayList<>();
         ouBannedItems.add("King's Rock");
         ouConfig.put("banned-held-items", ouBannedItems);
-        // --- NOVO CAMPO ---
         List<String> ouBannedMoves = new ArrayList<>();
-        ouBannedMoves.add("Tackle"); // Exemplo do seu teste anterior
+        ouBannedMoves.add("Tackle");
         ouConfig.put("banned-moves", ouBannedMoves);
+        // --- NOVO CAMPO ADICIONADO ---
+        List<String> ouBannedForms = new ArrayList<>();
+        ouBannedForms.add("HISUIAN");
+        ouConfig.put("banned-forms", ouBannedForms);
+        // --- FIM NOVO CAMPO ---
 
         rankedTiers.put("ou", ouConfig);
         defaultConfig.put("ranked-tiers", rankedTiers);

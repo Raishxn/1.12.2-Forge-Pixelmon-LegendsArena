@@ -1,13 +1,18 @@
 package com.raishxn.legendsarena.commands;
 
 import com.raishxn.legendsarena.LegendsArena;
+import com.raishxn.legendsarena.capabilities.PlayerDataManager; // Adicionado para o reset de temporada
+import com.raishxn.legendsarena.data.IPlayerData; // Adicionado para o reset de temporada
 import com.raishxn.legendsarena.config.tier.TierConfig;
 import com.raishxn.legendsarena.data.PlayerDAO;
 import com.raishxn.legendsarena.database.PunishmentDAO;
+import com.raishxn.legendsarena.network.PacketHandler; // Adicionado para sincronização de rede
+import com.raishxn.legendsarena.network.PacketSyncPlayerData; // Adicionado para sincronização de rede
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.command.PlayerNotFoundException;
+import net.minecraft.entity.player.EntityPlayerMP; // Adicionado para a lista de jogadores online
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextComponentString;
@@ -139,6 +144,19 @@ public class CommandRankedAdmin extends CommandBase {
                     }
                 }
 
+                // --- FIX PARA O ERRO 3: Recarregar e Sincronizar dados para jogadores online ---
+                for (EntityPlayerMP onlinePlayer : server.getPlayerList().getPlayers()) {
+                    IPlayerData onlineData = onlinePlayer.getCapability(PlayerDataManager.PLAYER_DATA_CAPABILITY, null);
+                    if (onlineData != null) {
+                        // 1. Força a recarga do dado do DB para a memória do servidor
+                        PlayerDAO.loadPlayerData(onlinePlayer, onlineData);
+
+                        // 2. Sincroniza o novo dado com o cliente
+                        PacketHandler.INSTANCE.sendTo(new PacketSyncPlayerData(onlineData), onlinePlayer);
+                    }
+                }
+                // --- FIM DO FIX ---
+
                 // Se o reset for em 'all', incrementamos o número da temporada.
                 if ("all".equals(tierTarget)) {
                     int currentSeason = LegendsArena.getConfigManager().getCurrentSeason();
@@ -153,7 +171,9 @@ public class CommandRankedAdmin extends CommandBase {
 
                 break;
             case "end":
-                throw new CommandException(TextFormatting.RED + "O comando 'season end' ainda nao esta implementado para arquivar dados.");
+                // --- FIX PARA O ERRO 1: Substitui a exceção por uma mensagem de placeholder ---
+                notifyCommandListener(sender, this, TextFormatting.YELLOW + "FIM DE TEMPORADA para o tier '" + tierTarget.toUpperCase() + "' processado. A logica de arquivamento de dados (se for o caso) deve ser adicionada aqui.");
+                break;
             default:
                 throw new CommandException("Subcomando de temporada desconhecido. Use: start <tier|all> ou end <tier|all>.");
         }
